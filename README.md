@@ -1,65 +1,111 @@
 # Product REST API – Technical Assessment
 
-A production-minded RESTful backend API built with **.NET 8 / ASP.NET Core Web API**, **SQL Server**, and **Entity Framework Core**. It implements Products and related Items, JWT authentication with rotating refresh tokens, role-based authorization, validation, structured logging, API versioning, Swagger/OpenAPI, tests, pagination, Docker, and centralized error handling.
+A production-minded RESTful backend API built with **.NET 8**, **ASP.NET Core Web API**, **SQL Server**, and **Entity Framework Core**.
 
-## High-level architecture
+The solution implements CRUD operations for Products and related Items with JWT authentication, refresh-token rotation, role-based authorization, validation, structured logging, API versioning, Swagger/OpenAPI documentation, automated tests, pagination, Docker support, and centralized error handling.
+
+---
+
+## Architecture
 
 ```text
 Client / Swagger
-      |
-      v
-ASP.NET Core API
-  - API versioning
-  - JWT auth + Admin policy
-  - FluentValidation
-  - Exception middleware
-      |
-      v
+       |
+       v
+ASP.NET Core Web API
+  ├── API Versioning
+  ├── JWT Authentication
+  ├── Role Authorization
+  ├── FluentValidation
+  └── Exception Middleware
+       |
+       v
 Application Layer
-  - DTOs
-  - service interfaces
-  - business services
-      |
-      v
+  ├── DTOs
+  ├── Interfaces
+  ├── Services
+  └── Validators
+       |
+       v
 Infrastructure Layer
-  - EF Core repositories
-  - JWT / refresh-token service
-  - SQL Server DbContext
-      |
-      v
+  ├── EF Core Repositories
+  ├── JWT / Refresh Tokens
+  └── ApplicationDbContext
+       |
+       v
 SQL Server
-  Product 1 ---- * Item
-  AppUser  1 ---- * RefreshToken
+  ├── Product 1 ---- * Item
+  └── AppUser  1 ---- * RefreshToken
 ```
 
-Dependencies point inward: API -> Application/Infrastructure, Infrastructure -> Application/Domain, Application -> Domain. Domain has no infrastructure dependency.
+The solution follows layered architecture with dependencies pointing inward:
 
-## API endpoints
+- **API** → Application / Infrastructure
+- **Infrastructure** → Application / Domain
+- **Application** → Domain
+- **Domain** → No infrastructure dependencies
 
-| Method | Route | Access | Purpose |
+---
+
+## Tech Stack
+
+- .NET 8
+- ASP.NET Core Web API
+- Entity Framework Core
+- SQL Server 2022
+- JWT Authentication
+- FluentValidation
+- xUnit
+- Moq
+- WebApplicationFactory
+- Swagger / OpenAPI
+- Serilog
+- Docker & Docker Compose
+
+---
+
+## API Endpoints
+
+| Method | Endpoint | Access | Description |
 |---|---|---|---|
-| POST | `/api/v1/auth/login` | Public | Get JWT + refresh token |
+| POST | `/api/v1/auth/login` | Public | Authenticate user |
 | POST | `/api/v1/auth/refresh` | Public | Rotate refresh token |
-| GET | `/api/v1/products?pageNumber=1&pageSize=20` | Public | Paginated products |
-| GET | `/api/v1/products/{id}` | Public | Product by id |
+| GET | `/api/v1/products` | Public | Get paginated products |
+| GET | `/api/v1/products/{id}` | Public | Get product by ID |
 | POST | `/api/v1/products` | Admin | Create product |
 | PUT | `/api/v1/products/{id}` | Admin | Update product |
 | DELETE | `/api/v1/products/{id}` | Admin | Delete product |
-| GET | `/api/v1/products/{productId}/items` | Public | Related items |
-| POST | `/api/v1/products/{productId}/items` | Admin | Create related item |
+| GET | `/api/v1/products/{productId}/items` | Public | Get product items |
+| POST | `/api/v1/products/{productId}/items` | Admin | Create item |
 | PUT | `/api/v1/products/{productId}/items/{itemId}` | Admin | Update item |
 | DELETE | `/api/v1/products/{productId}/items/{itemId}` | Admin | Delete item |
-| GET | `/health` | Public | Health check |
+| GET | `/health` | Public | API health check |
 
-## Authentication flow
+---
 
-1. Call `POST /api/v1/auth/login` with the seeded local admin credentials.
-2. The server verifies the password hash and returns a short-lived access token plus a longer-lived refresh token.
-3. Send the JWT as `Authorization: Bearer <token>` for protected endpoints.
-4. When the access token expires, call `/auth/refresh`. The old refresh token is revoked and replaced, implementing refresh-token rotation.
-5. Write operations require the `Admin` role. Public reads remain available for easy API evaluation.
+## Authentication
 
-### Local demo credentials
+The API uses JWT authentication with refresh-token rotation.
+
+### Authentication Flow
+
+1. Authenticate using `POST /api/v1/auth/login`.
+2. The server validates the credentials.
+3. An access token and refresh token are returned.
+4. Send the access token with protected requests:
+
+```text
+Authorization: Bearer <token>
+```
+
+5. When the access token expires, use `/api/v1/auth/refresh`.
+6. The previous refresh token is revoked and replaced with a new token.
+
+Write operations require the **Admin** role.
+
+### Demo Credentials
+
+For local assessment/demo purposes:
 
 ```json
 {
@@ -68,122 +114,321 @@ Dependencies point inward: API -> Application/Infrastructure, Infrastructure -> 
 }
 ```
 
-These are seeded for assessment/demo use only. Do not use them in production.
+> These credentials are intended only for local assessment/demo use.
 
-## Run with Docker (recommended)
+---
 
-Prerequisites: Docker Desktop.
+## Running with Docker
+
+### Prerequisites
+
+- Docker Desktop
+
+Clone the repository:
+
+```bash
+git clone https://github.com/SinghAdityaa/product-rest-api-assessment.git
+cd product-rest-api-assessment
+```
+
+Start the application:
 
 ```bash
 docker compose up --build
 ```
 
-Then open:
+Docker Compose starts:
 
-- Swagger: `http://localhost:8080/swagger`
-- Health: `http://localhost:8080/health`
+- ASP.NET Core API
+- SQL Server 2022
+- Product assessment database
 
-The compose file starts SQL Server 2022 and the API. The API creates the assessment schema and demo records on first startup.
+Open Swagger:
 
-## Run with local .NET SDK
+```text
+http://localhost:8080/swagger
+```
 
-Prerequisites: .NET 8 SDK and SQL Server reachable on `localhost:1433`.
+Health check:
+
+```text
+http://localhost:8080/health
+```
+
+---
+
+## Running Locally
+
+### Prerequisites
+
+- .NET 8 SDK
+- SQL Server
+
+Restore dependencies:
 
 ```bash
 dotnet restore
+```
+
+Build:
+
+```bash
 dotnet build
+```
+
+Run tests:
+
+```bash
 dotnet test
+```
+
+Start the API:
+
+```bash
 dotnet run --project src/API/API.csproj --launch-profile http
 ```
 
-Swagger opens at `http://localhost:5099/swagger`.
+Swagger will be available at:
 
-If your SQL Server connection differs, update `ConnectionStrings:DefaultConnection` in `src/API/appsettings.json` or provide it as an environment variable.
+```text
+http://localhost:5099/swagger
+```
 
-## Example requests
+---
 
-Login:
+## Example Requests
+
+### Get Products
 
 ```bash
-curl -X POST http://localhost:5099/api/v1/auth/login \
+curl "http://localhost:8080/api/v1/products?pageNumber=1&pageSize=20"
+```
+
+### Login
+
+```bash
+curl -X POST "http://localhost:8080/api/v1/auth/login" \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"Admin@123"}'
 ```
 
-Public products:
+### Create Product
+
+Replace `<JWT>` with the access token returned by the login endpoint.
 
 ```bash
-curl "http://localhost:5099/api/v1/products?pageNumber=1&pageSize=20"
-```
-
-Create a product (replace `<JWT>`):
-
-```bash
-curl -X POST http://localhost:5099/api/v1/products \
+curl -X POST "http://localhost:8080/api/v1/products" \
   -H "Authorization: Bearer <JWT>" \
   -H "Content-Type: application/json" \
   -d '{"productName":"Monitor"}'
 ```
 
-## Validation and errors
+---
 
-FluentValidation validates request DTOs through a custom MVC action filter (avoiding the deprecated FluentValidation.AspNetCore auto-validation package). Errors and unhandled exceptions are normalized to RFC-style `application/problem+json` responses by custom middleware. Missing domain resources return HTTP 404, invalid input returns HTTP 400, failed authentication returns HTTP 401, and successful creation/deletion use 201/204 respectively.
+## Validation & Error Handling
 
-## Performance considerations
+Request DTOs are validated using **FluentValidation**.
 
-Read-only EF Core queries use `AsNoTracking()`. Product collections are paginated and capped at 100 records per request. ProductName and Item.ProductId are indexed. All database calls are asynchronous, response compression is enabled, and DTOs prevent accidental over-fetching/serialization of EF navigation graphs.
+A centralized exception-handling middleware provides consistent `application/problem+json` error responses.
 
-## Security measures
+Typical HTTP responses include:
 
-- JWT issuer/audience/signature/lifetime validation
-- 15-minute access token and rotating refresh tokens
-- Role-based authorization on write operations
-- Password hashing via ASP.NET Core `PasswordHasher<T>`
+| Status | Meaning |
+|---|---|
+| `200 OK` | Successful request |
+| `201 Created` | Resource created |
+| `204 No Content` | Successful deletion/update where applicable |
+| `400 Bad Request` | Validation failure |
+| `401 Unauthorized` | Authentication required |
+| `403 Forbidden` | Insufficient permissions |
+| `404 Not Found` | Resource not found |
+| `500 Internal Server Error` | Unexpected server error |
+
+---
+
+## Performance Considerations
+
+The implementation includes:
+
+- `AsNoTracking()` for read-only EF Core queries
+- Async database operations
+- Pagination for collection endpoints
+- Maximum page-size protection
+- Database indexes
+- Response compression
+- DTO-based responses to avoid unnecessary entity serialization
+
+---
+
+## Security
+
+Security measures include:
+
+- JWT signature, issuer, audience, and lifetime validation
+- Short-lived access tokens
+- Refresh-token rotation
+- Role-based authorization
+- ASP.NET Core password hashing
 - FluentValidation input validation
-- Explicit CORS policy
-- HTTPS redirection for normal local/hosted execution
-- Basic security response headers
-- Secrets can be overridden by environment variables and should not be committed for production
+- CORS configuration
+- HTTPS redirection
+- Security response headers
+- Environment-variable support for sensitive configuration
 
-## Testing strategy
+Production deployments should store database credentials and JWT secrets in a secure secret-management solution.
 
-`Application.Tests` uses xUnit + Moq to unit-test application services in isolation. `API.Tests` uses `WebApplicationFactory` and EF Core InMemory to verify HTTP behavior, seed data, authorization, and the health endpoint.
+---
+
+## Testing
+
+The solution contains both unit and integration tests.
+
+### Application Tests
+
+Built with:
+
+- xUnit
+- Moq
+
+These tests verify application/service behavior independently from infrastructure.
+
+### API Integration Tests
+
+Built with:
+
+- xUnit
+- `WebApplicationFactory`
+- EF Core InMemory provider
+
+The tests verify:
+
+- Product API behavior
+- Authentication requirements
+- HTTP status codes
+- Health endpoint
+
+Run all tests with:
 
 ```bash
 dotnet test
 ```
 
-## Project structure
+---
+
+## Project Structure
 
 ```text
-src/
-  API/              Controllers, middleware, DI extensions, Program
-  Application/      DTOs, interfaces, services, validators
-  Domain/           Entities and domain exceptions
-  Infrastructure/   EF Core, repositories, identity/JWT, logging marker
-tests/
-  Application.Tests/
-  API.Tests/
-docs/
-  schema.sql
-docker-compose.yml
+product-rest-api-assessment/
+│
+├── src/
+│   ├── API/
+│   │   ├── Controllers/
+│   │   ├── Extensions/
+│   │   ├── Filters/
+│   │   ├── Middleware/
+│   │   ├── Program.cs
+│   │   └── Dockerfile
+│   │
+│   ├── Application/
+│   │   ├── DTOs/
+│   │   ├── Interfaces/
+│   │   ├── Services/
+│   │   └── Validators/
+│   │
+│   ├── Domain/
+│   │   ├── Entities/
+│   │   └── Exceptions/
+│   │
+│   └── Infrastructure/
+│       ├── Data/
+│       ├── Identity/
+│       └── Logging/
+│
+├── tests/
+│   ├── API.Tests/
+│   └── Application.Tests/
+│
+├── docs/
+│   └── schema.sql
+│
+├── docker-compose.yml
+├── ProductApiAssessment.sln
+└── README.md
 ```
 
-## Deployment (high level)
+---
 
-1. Store the SQL connection string and JWT signing key in a secret manager / deployment environment variables.
-2. Build and scan the Docker image in CI.
-3. Run `dotnet test` as a required CI gate.
-4. Push the image to the organization container registry.
-5. Deploy behind an HTTPS reverse proxy/load balancer to Azure Container Apps, App Service, AKS, ECS, or a comparable platform.
-6. Use a managed SQL Server/Azure SQL instance, centralized logs, health probes, and environment-specific CORS origins.
+## Database
 
-## Submission screenshot
+The primary relationship follows the assessment specification:
 
-After starting the application, capture **Swagger UI at `/swagger`** with the Product, Item, and Auth endpoints expanded enough to show the API is running. A second terminal/Swagger screenshot showing `GET /health` = `200` or `GET /api/v1/products` = `200` is also useful.
+```text
+Product
+   |
+   | 1
+   |
+   | *
+ Item
+```
 
-## Notes
+A Product can contain multiple Items, while each Item belongs to one Product.
 
-- `DbSeeder` uses `EnsureCreated()` to keep evaluator setup one command for this assessment. In a long-lived production service, replace this with reviewed EF Core migrations executed through the deployment pipeline.
-- The supplied `docs/schema.sql` mirrors the requested Product/Item structure and includes the recommended indexes.
-# product-rest-api-assessment
+The SQL schema is also available at:
+
+```text
+docs/schema.sql
+```
+
+---
+
+## Deployment Considerations
+
+For a production deployment:
+
+1. Store JWT keys and database credentials in a secret manager.
+2. Run `dotnet test` in the CI/CD pipeline.
+3. Build and scan the Docker image.
+4. Push the image to a container registry.
+5. Deploy behind HTTPS using a reverse proxy or load balancer.
+6. Use managed SQL Server/Azure SQL.
+7. Configure centralized logging and health monitoring.
+8. Configure environment-specific CORS policies.
+
+Possible deployment targets include Azure App Service, Azure Container Apps, AKS, AWS ECS, or similar container platforms.
+
+---
+
+## Assessment Requirements Covered
+
+- RESTful Product CRUD API
+- Product → Item relationship
+- .NET 8 / ASP.NET Core
+- SQL Server
+- Entity Framework Core
+- Repository pattern
+- Service layer
+- JWT authentication
+- Refresh-token strategy
+- Role-based authorization
+- FluentValidation
+- Centralized error handling
+- API versioning
+- Swagger/OpenAPI
+- Pagination
+- Structured logging
+- Unit tests
+- Integration tests
+- Docker
+- Docker Compose
+- Health endpoint
+- High-level architecture
+- Security considerations
+- Deployment documentation
+
+---
+
+## Author
+
+**Aditya Singh**
+
+GitHub: `SinghAdityaa`
